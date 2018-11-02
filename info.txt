@@ -1,0 +1,6 @@
+Klasy:
+Game - główna klasa gry, uruchami klasę widoku
+ArkanoidView - klasa zarządza całą grą i wyświetla elementy gry na ekran
+Paddle - klasa platformy
+Ball - klasa piłeczki
+Brick - klasa bloku
