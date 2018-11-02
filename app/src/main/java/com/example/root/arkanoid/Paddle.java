@@ -8,17 +8,14 @@ public class Paddle {
     private float height;
 
     private int screenX;
-    private int screenY;
 
     public Paddle(int screenX, int screenY){
 
         this.screenX = screenX;
-        this.screenY = screenY;
 
         length = screenX/5;
         height = screenY/10;
 
-        // Start paddle in roughly the sceen centre
         float x = (screenX / 2) - (length / 2) ;
         float y = screenY - height -5;
 

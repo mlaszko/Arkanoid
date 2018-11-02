@@ -1,29 +1,21 @@
 package com.example.root.arkanoid;
 
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
-import android.content.res.AssetManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Point;
 import android.graphics.RectF;
-import android.media.AudioManager;
-import android.media.SoundPool;
-import android.os.Bundle;
 import android.util.Log;
-import android.view.Display;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-
 import java.util.Random;
 
 
 public class ArkanoidView extends SurfaceView implements Runnable {
 
     Thread gameThread = null;
-    SurfaceHolder ourHolder;
+    SurfaceHolder surfaceHolder;
     volatile boolean playing;
     Canvas canvas;
     Paint paint;
@@ -36,11 +28,13 @@ public class ArkanoidView extends SurfaceView implements Runnable {
     int screenY;
 
     boolean touchInRect = false;
+    boolean bounced = false;
 
     Paddle paddle;
+    float paddleX;
     Ball ball;
     float r = 20;
-    Brick[] bricks = new Brick[200];
+    Brick[] bricks = new Brick[40];
     int numBricks = 0;
     int visBricks = 0;
 
@@ -49,36 +43,29 @@ public class ArkanoidView extends SurfaceView implements Runnable {
 
     public ArkanoidView(Context context, int screenX, int screenY) {
         super(context);
-        ourHolder = getHolder();
+        surfaceHolder = getHolder();
         paint = new Paint();
         playing = true;
         paused = true;
         this.screenX = screenX;
         this.screenY = screenY;
         paddle = new Paddle(screenX, screenY);
+        paddleX = paddle.getRect().centerX();
         ball = new Ball(paddle.getRect().centerX(), paddle.getRect().top -r);
         createBricks();
-        Log.i("konstruktor", "ArkanoidView");
     }
 
     @Override
     public void run() {
         while (playing) {
-            // Capture the current time in milliseconds in startFrameTime
             long startFrameTime = System.currentTimeMillis();
 
-            // Update the frame
-            // Update the frame
             if(!paused){
                 update();
             }
 
-            // Draw the frame
             draw();
 
-            // Calculate the fps this frame
-            // We can then use the result to
-            // time animations and more.
             timeThisFrame = System.currentTimeMillis() - startFrameTime;
             if (timeThisFrame >= 1) {
                 fps = 1000 / timeThisFrame;
@@ -87,22 +74,31 @@ public class ArkanoidView extends SurfaceView implements Runnable {
     }
 
     public void update() {
-        //TODO paddle?
+        paddle.updateX(paddleX);
         ball.update(fps);
-        RectF rect = new RectF(ball.getX() - r, ball.getY() - r, ball.getX() + r, ball.getY() + r);
-        for (int i = 0; i < numBricks; i++) {
-            if (bricks[i].getVisibility()) {
-                if (RectF.intersects(bricks[i].getRect(), rect)) {
-                    bricks[i].setInvisible();
-                    score += 10;
-                    visBricks--;
-                    if(visBricks == 0){
-                        gameover = true;
-                        paused = true;
+        RectF ballRect = new RectF(ball.getX() - r, ball.getY() - r, ball.getX() + r, ball.getY() + r);
+        if(ball.getY() < screenY/2) {
+            for (int i = 0; i < numBricks; i++) {
+                if (bricks[i].getVisibility()) {
+                    if (RectF.intersects(bricks[i].getRect(), ballRect)) {
+                        bricks[i].setInvisible();
+                        score += 10;
+                        visBricks--;
+                        if (visBricks == 0) {
+                            gameover = true;
+                            paused = true;
+                        }
+                        ball.speedUp(5);
+                        if(bricks[i].getRect().contains(ball.getX() - r, ball.getY()) ||
+                                bricks[i].getRect().contains(ball.getX() + r, ball.getY())){
+                            ball.reverseXVelocity();
+                        }
+                        else {
+                            ball.reverseYVelocity();
+                        }
+                        bounced = false;
+                        break;
                     }
-                    ball.speedUp(5);
-                    ball.reverseYVelocity();
-                    break;
                 }
             }
         }
@@ -111,17 +107,26 @@ public class ArkanoidView extends SurfaceView implements Runnable {
                 ball.getX() + r > screenX){
             ball.reverseXVelocity();
             ball.speedUp(1);
+            bounced = false;
         }
 
         if(ball.getY() - r < 0){
             ball.reverseYVelocity();
             ball.speedUp(1);
+            bounced = false;
         }
-        if(ball.getY() + r > paddle.getRect().top) {
-//            if (ball.getX() > paddle.getRect().left && ball.getX() < paddle.getRect().right) {
-            if(RectF.intersects(rect, paddle.getRect())){
-                ball.reverseYVelocity();
-                ball.speedUp(10);
+        if(ball.getY() + r >= paddle.getRect().top) {
+            if(!bounced && RectF.intersects(ballRect, paddle.getRect())){
+                if(paddle.getRect().contains(ball.getX() + r, ball.getY()) ||
+                        paddle.getRect().contains(ball.getX() - r, ball.getY())){
+                    ball.reverseXVelocity();
+                    ball.speedUp(10);
+                }
+                else{
+                    ball.reverseYVelocity();
+                    ball.speedUp(10);
+                }
+                bounced = true;
             } else if (ball.getY() > screenY) {
                 Log.i("Life", "-1");
                 lives--;
@@ -130,19 +135,17 @@ public class ArkanoidView extends SurfaceView implements Runnable {
                     gameover = true;
                 }
                 ball.reset(paddle.getRect().centerX(), paddle.getRect().top - r);
-                ball.reverseYVelocity();
+                ball.upVelocity();
             }
         }
 
     }
 
     public void draw() {
-        if (ourHolder.getSurface().isValid()) {
-            canvas = ourHolder.lockCanvas();
+        if (surfaceHolder.getSurface().isValid()) {
+            canvas = surfaceHolder.lockCanvas();
 
-//            canvas.drawColor(Color.argb(255,  26, 196, 182));
             canvas.drawColor(Color.argb(255,  0, 0, 0));
-
             paint.setColor(Color.argb(255,  255, 255, 255));
             //paddle
             canvas.drawRect(paddle.getRect(), paint);
@@ -161,19 +164,20 @@ public class ArkanoidView extends SurfaceView implements Runnable {
             paint.setTextSize(40);
             canvas.drawText("Score: " + score + "   Lives: " + lives, 10,50, paint);
 
-
             if(gameover) {
                 paint.setTextSize(140);
-                canvas.drawText("GAME OVER", 0.25f * screenX, screenY / 2, paint);
+                if(visBricks == 0)
+                    canvas.drawText("YOU WON!!!", 0.25f * screenX, screenY / 2, paint);
+                else
+                    canvas.drawText("GAME OVER", 0.25f * screenX, screenY / 2, paint);
             }
             else if(paused){
                 paint.setTextSize(40);
                 canvas.drawText("tap to start", 0.4f * screenX , screenY / 2, paint);
             }
 
-            ourHolder.unlockCanvasAndPost(canvas);
+            surfaceHolder.unlockCanvasAndPost(canvas);
         }
-
     }
 
     public void createBricks() {
@@ -201,7 +205,6 @@ public class ArkanoidView extends SurfaceView implements Runnable {
         } catch (InterruptedException e) {
             Log.e("Error:", "joining thread");
         }
-
     }
 
     public void resume() {
@@ -213,7 +216,6 @@ public class ArkanoidView extends SurfaceView implements Runnable {
 
     @Override
     public boolean onTouchEvent(MotionEvent motionEvent) {
-
         switch (motionEvent.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
                 if(paused & !gameover)
@@ -226,9 +228,7 @@ public class ArkanoidView extends SurfaceView implements Runnable {
 
             case MotionEvent.ACTION_MOVE:
                 if(touchInRect) {
-                    float mx = motionEvent.getX();
-//                    float my = motionEvent.getY();
-                    paddle.updateX(mx);
+                    paddleX = motionEvent.getX();
                 }
                 break;
 

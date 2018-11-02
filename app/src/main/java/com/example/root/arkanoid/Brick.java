@@ -1,5 +1,4 @@
 package com.example.root.arkanoid;
-import android.graphics.Color;
 import android.graphics.RectF;
 public class Brick {
 
@@ -23,12 +22,10 @@ public class Brick {
 
         this.color = color;
 
-        int padding = 1;
-
-        rect = new RectF(column * width + padding,
-                row * height + padding,
-                column * width + width - padding,
-                row * height + height - padding);
+        rect = new RectF(column * width + 2,
+                row * height + 2,
+                column * width + width - 2,
+                row * height + height - 2);
     }
 
     public RectF getRect(){

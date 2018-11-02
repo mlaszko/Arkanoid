@@ -12,7 +12,7 @@ public class Ball {
         return y;
     }
 
-    private float initSpeed = 250;
+    private final float initSpeed = 250;
 
     float x;
     float y;
@@ -38,6 +38,12 @@ public class Ball {
             return;
         x += xVelocity * speed / fps;
         y += yVelocity * speed / fps;
+    }
+
+    public void upVelocity(){
+        if(yVelocity > 0){
+            reverseYVelocity();
+        }
     }
 
     public void reverseYVelocity(){
